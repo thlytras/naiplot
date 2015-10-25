@@ -1,8 +1,8 @@
 name: NAIplot
 account: thlytras
 server: shinyapps.io
-bundleId: 294867
+bundleId: 297137
 url: https://thlytras.shinyapps.io/NAIplot
-when: 1445553426.03504
+when: 1445771368.87472
 asMultiple: FALSE
 asStatic: FALSE

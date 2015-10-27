@@ -1,5 +1,17 @@
-
 library(shiny)
+library(diptest)
+library(e1071)
+
+# Pretty-printer for p-values
+piformat <- function(x, html=FALSE) {
+  res <- x
+  res[which(res<0 | res>1)] <- NA
+  res[which(res>0.05)] <- round(res[which(res>0.05)], 2)
+  res[which(res<0.05 & res>0.001)] <- round(res[which(res<0.05 & res>0.001)], 3)
+  res[which(res<0.001)] <- ifelse(html, "p&lt;0.001", "p<0.001")
+  res[if (html) (res!="p&lt;0.001") else (res!="p<0.001")] <- paste("p=", res[res!="p<0.001"], sep="")
+  return(res)
+}
 
 naiplot <- function(x, col=c("blue", "red", "green", "magenta"), lwd=1, 
                     xlim=NA, xlab=NA, ylab="Density", legend=NA, 
@@ -53,10 +65,10 @@ naiplot <- function(x, col=c("blue", "red", "green", "magenta"), lwd=1,
   
   if (!is.na(RI)) {
     if (RI=="a") {
-      abline(v=log10(c(10,100)), lty=c("dotted", "dashed"), lwd=2*lwd, col="darkred")
+      abline(v=log10(c(10,100)), lty=c("dotted", "dashed"), lwd=1.5*lwd, col="darkred")
     }
     if (RI=="b") {
-      abline(v=log10(c(5,50)), lty=c("dotted", "dashed"), lwd=2*lwd, col="darkred")
+      abline(v=log10(c(5,50)), lty=c("dotted", "dashed"), lwd=1.5*lwd, col="darkred")
     }
   }
   
@@ -75,8 +87,8 @@ naiplot <- function(x, col=c("blue", "red", "green", "magenta"), lwd=1,
 
 
 shinyServer(function(input, output) {
-
-  output$distPlot <- renderPlot({
+  
+  drawPlot <- function() {
     
     suppressWarnings({
       values1 <- as.numeric(unlist(strsplit(input$numvalues1, "\\s*(,|\\s)\\s*")))
@@ -112,7 +124,78 @@ shinyServer(function(input, output) {
               axis=axisval, axislabels=axislab[1:length(axisval)], cex=input$cex,
               RI=RI, boxplot=input$boxplot)
     }
-
+    
+  }
+  
+  output$distPlot <- renderPlot({
+    drawPlot()
   })
-
+  
+  output$downloadEps <- downloadHandler(
+    filename = function() {
+      paste(input$main, "eps", sep=".")
+    },
+    content = function(file) {
+      postscript(file)
+      drawPlot()
+      dev.off()
+    }
+  )
+  
+  output$downloadTiff <- downloadHandler(
+    filename = function() {
+      paste(input$main, "tiff", sep=".")
+    },
+    content = function(file) {
+      tiff(file, compression="lzw")
+      drawPlot()
+      dev.off()
+    }
+  )
+  
+  output$statpanel <- renderText({
+    outc <- textConnection("out", "w")
+    sink(outc)
+    suppressWarnings({
+      values1 <- as.numeric(unlist(strsplit(input$numvalues1, "\\s*(,|\\s)\\s*")))
+      values2 <- as.numeric(unlist(strsplit(input$numvalues2, "\\s*(,|\\s)\\s*")))
+      values3 <- as.numeric(unlist(strsplit(input$numvalues3, "\\s*(,|\\s)\\s*")))
+      values4 <- as.numeric(unlist(strsplit(input$numvalues4, "\\s*(,|\\s)\\s*")))
+    })
+    if (input$logme) {
+      values1 <- log10(values1); values2 <- log10(values2)
+      values3 <- log10(values3); values4 <- log10(values4)
+    }
+    if (sum(is.na(values2)) == length(values2)) values2 <- NULL
+    if (sum(is.na(values3)) == length(values3)) values3 <- NULL
+    if (sum(is.na(values4)) == length(values4)) values4 <- NULL
+    
+    for (i in 1:4) {
+      if (!is.null(get(sprintf("values%s",i)))) {
+        tmp <- sprintf("Sample %s: %s", i, input[[sprintf("name%s", i)]])
+        cat(tmp, "\n")
+        cat(paste(rep("-", nchar(tmp)), collapse=""), "\n")
+        vals <- get(sprintf("values%s",i))
+        n <- length(get(sprintf("values%s",i)))
+        bmcoef <- (skewness(vals, type=2)^2 + 1) / (kurtosis(vals, type=2) + 3*(n-1)^2 / ((n-2)*(n-3)))
+        cat("Bimodality coefficient: ", bmcoef, "\n")
+        if (bmcoef>5/9) {
+          cat("   Coefficient is larger than 5/9 (≃0.555), indicating a bi- or multimodal distribution.\n")
+        } else {
+          cat("   Coefficient is not larger than 5/9 (≃0.555), indicating a unimodal distribution.\n")
+        }
+        ht <- dip.test(get(sprintf("values%s",i)))
+        cat(ht$method, ": D=", ht$statistic, ", ", piformat(ht$p.value), "\n", sep="")
+        if (ht$p.value<0.05) {
+          cat("   Null hypothesis (unimodality) rejected (at the p<0.05 level),\n   data support the alternative hypothesis (bi- or multimodality).\n\n")
+        } else {
+          cat("   Null hypothesis (unimodality) not rejected (at the p<0.05 level),\n   data do not support the alternative hypothesis (bi- or multimodality).\n\n")
+        }
+      }
+    }
+    sink(); close(outc)
+    return(paste(out, collapse="\n"))
+    
+  })
+  
 })

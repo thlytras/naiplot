@@ -14,15 +14,13 @@ shinyUI(fluidPage(
       plotOutput("distPlot")
     ),
     tabPanel("Statistics",
-      h2("This is the statistics panel"),
-      p("Statistics of bimodality (Hartigan's dip statistic
-        and bimodality coefficient) will appear here"),
+      verbatimTextOutput("statpanel"),
       br(), br(), br(), br(), br()
-    ),
-    tabPanel("Get help",
-      h2("This is a help page"),
-      p("This will be the help page content"),
-      br(), br(), br(), br(), br()
+#    ),
+#    tabPanel("Get help",
+#      h2("This is a help page"),
+#      p("This will be the help page content"),
+#      br(), br(), br(), br(), br()
     )
   ),
   
@@ -81,6 +79,8 @@ shinyUI(fluidPage(
      )
     ),
     column(4,
+      downloadButton('downloadTiff', 'Download plot as .tiff'),
+      downloadButton('downloadEps', 'Download plot as .eps'),
       checkboxInput("logme", "Convert values to log", TRUE),
       checkboxInput("secondPlot", "Add second set of values"),
       conditionalPanel(

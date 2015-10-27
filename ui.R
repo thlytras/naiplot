@@ -28,7 +28,7 @@ shinyUI(fluidPage(
   fluidRow(
     column(4,
       textInput("main", "Plot title:", "H1N1 strains"),
-      textInput("xlab", "X-axis label:", "Fold change (log scale)"),
+      textInput("xlab", "X-axis label:", "Fold change (log10 scale)"),
       selectInput("legend", "Legend:",
                   c("No legend"=0,
                     "Top Left" = "topleft",
@@ -81,7 +81,7 @@ shinyUI(fluidPage(
     column(4,
       downloadButton('downloadTiff', 'Download plot as .tiff'),
       downloadButton('downloadEps', 'Download plot as .eps'),
-      checkboxInput("logme", "Convert values to log", TRUE),
+      checkboxInput("logme", "Convert values to log10", TRUE),
       checkboxInput("secondPlot", "Add second set of values"),
       conditionalPanel(
         "input.secondPlot == true",

@@ -86,7 +86,8 @@ naiplot <- function(x, col=c("blue", "red", "green", "magenta"), lwd=1,
 }
 
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
+  cdata <- session$clientData
   
   drawPlot <- function() {
     
@@ -136,7 +137,8 @@ shinyServer(function(input, output) {
       paste(input$main, "eps", sep=".")
     },
     content = function(file) {
-      postscript(file)
+      r <- cdata$output_distPlot_width/cdata$output_distPlot_height
+      postscript(file, width=7*r, height=7, paper="special", horizontal=FALSE)
       drawPlot()
       dev.off()
     }
@@ -147,7 +149,8 @@ shinyServer(function(input, output) {
       paste(input$main, "tiff", sep=".")
     },
     content = function(file) {
-      tiff(file, compression="lzw")
+      r <- cdata$output_distPlot_width/cdata$output_distPlot_height
+      tiff(file, width=3000*r, height=3000, compression="lzw", res=540)
       drawPlot()
       dev.off()
     }
@@ -178,6 +181,10 @@ shinyServer(function(input, output) {
         vals <- get(sprintf("values%s",i))
         n <- length(get(sprintf("values%s",i)))
         bmcoef <- (skewness(vals, type=2)^2 + 1) / (kurtosis(vals, type=2) + 3*(n-1)^2 / ((n-2)*(n-3)))
+        cat("Summary statistics: ")
+        if (input$logme) cat("(values are log10)")
+        cat("\n")
+        print(summary(vals))
         cat("Bimodality coefficient: ", bmcoef, "\n")
         if (bmcoef>5/9) {
           cat("   Coefficient is larger than 5/9 (≃0.555), indicating a bi- or multimodal distribution.\n")
